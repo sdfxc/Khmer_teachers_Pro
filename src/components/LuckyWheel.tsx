@@ -9,9 +9,9 @@ import { RefreshCw, Play, RotateCcw, Shuffle, Trash2, Plus } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
 
-const TICK_URL = 'https://www.soundjay.com/buttons/sounds/tick-01.mp3';
-const FIREWORK_URL = 'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3';
-const APPLAUSE_URL = 'https://www.soundjay.com/human/sounds/applause-01.mp3';
+const TICK_URL = 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3';
+const FIREWORK_URL = 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3';
+const APPLAUSE_URL = 'https://assets.mixkit.co/active_storage/sfx/2010/2010-preview.mp3';
 
 interface LuckyWheelProps {
   students: Student[];
@@ -40,12 +40,25 @@ export default function LuckyWheel({ students, currentClass }: LuckyWheelProps) 
     tickAudio.current = new Audio(TICK_URL);
     fireworkAudio.current = new Audio(FIREWORK_URL);
     applauseAudio.current = new Audio(APPLAUSE_URL);
+    
+    tickAudio.current.load();
+    fireworkAudio.current.load();
+    applauseAudio.current.load();
+
     tickAudio.current.volume = 0.6;
     fireworkAudio.current.volume = 0.8;
     applauseAudio.current.volume = 0.7;
+
+    const handleError = (e: any) => console.warn('Audio failed to load:', e.target.src);
+    tickAudio.current.addEventListener('error', handleError);
+    fireworkAudio.current.addEventListener('error', handleError);
+    applauseAudio.current.addEventListener('error', handleError);
     
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      tickAudio.current?.removeEventListener('error', handleError);
+      fireworkAudio.current?.removeEventListener('error', handleError);
+      applauseAudio.current?.removeEventListener('error', handleError);
     };
   }, []);
 

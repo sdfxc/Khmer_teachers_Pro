@@ -9,7 +9,7 @@ import { Users, Shuffle, Download, Printer } from 'lucide-react';
 import { motion } from 'motion/react';
 import confetti from 'canvas-confetti';
 
-const FIREWORK_URL = 'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3';
+const FIREWORK_URL = 'https://assets.mixkit.co/active_storage/sfx/1435/1435-preview.mp3';
 
 interface SmartGroupProps {
   students: Student[];
@@ -25,6 +25,7 @@ export default function SmartGroup({ students, currentClass }: SmartGroupProps) 
   useEffect(() => {
     fireworkAudio.current = new Audio(FIREWORK_URL);
     fireworkAudio.current.volume = 0.8;
+    fireworkAudio.current.load();
   }, []);
 
   const generateGroups = async () => {
@@ -34,7 +35,7 @@ export default function SmartGroup({ students, currentClass }: SmartGroupProps) 
     if (fireworkAudio.current) {
       fireworkAudio.current.play().then(() => {
         fireworkAudio.current?.pause();
-      }).catch(() => {});
+      }).catch((err) => console.log('Audio unlock failed:', err));
     }
 
     // Smart Balancing Logic
