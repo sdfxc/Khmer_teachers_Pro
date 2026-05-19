@@ -9,8 +9,9 @@ import { RefreshCw, Play, RotateCcw, Shuffle, Trash2, Plus } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
 
-const TICK_URL = 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3';
-const WIN_URL = 'https://assets.mixkit.co/active_storage/sfx/2010/2010-preview.mp3';
+const TICK_URL = 'https://www.soundjay.com/buttons/sounds/tick-01.mp3';
+const FIREWORK_URL = 'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3';
+const APPLAUSE_URL = 'https://www.soundjay.com/human/sounds/applause-01.mp3';
 
 interface LuckyWheelProps {
   students: Student[];
@@ -21,17 +22,27 @@ export default function LuckyWheel({ students, currentClass }: LuckyWheelProps) 
   const [list, setList] = useState<Student[]>([]);
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
+  const [pointerColor, setPointerColor] = useState('#f43f5e');
   const [winner, setWinner] = useState<Student | null>(null);
   const wheelRef = useRef<SVGSVGElement>(null);
   const tickAudio = useRef<HTMLAudioElement | null>(null);
-  const winAudio = useRef<HTMLAudioElement | null>(null);
+  const fireworkAudio = useRef<HTMLAudioElement | null>(null);
+  const applauseAudio = useRef<HTMLAudioElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
-  const lastIndex = useRef<number>(-1);
+  const lastSegment = useRef<number>(-1);
+
+  const colors = [
+    '#6366f1', '#ec4899', '#10b981', '#f59e0b', 
+    '#8b5cf6', '#06b6d4', '#f43f5e', '#14b8a6'
+  ];
 
   useEffect(() => {
     tickAudio.current = new Audio(TICK_URL);
-    winAudio.current = new Audio(WIN_URL);
-    tickAudio.current.volume = 0.5;
+    fireworkAudio.current = new Audio(FIREWORK_URL);
+    applauseAudio.current = new Audio(APPLAUSE_URL);
+    tickAudio.current.volume = 0.6;
+    fireworkAudio.current.volume = 0.8;
+    applauseAudio.current.volume = 0.7;
     
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
@@ -43,8 +54,20 @@ export default function LuckyWheel({ students, currentClass }: LuckyWheelProps) 
     setWinner(null);
   }, [students, currentClass]);
 
-  const spin = () => {
+  const spin = async () => {
     if (isSpinning || list.length < 2) return;
+
+    // Unlock audio for browsers that block autoplay
+    if (tickAudio.current) {
+      tickAudio.current.play().then(() => {
+        tickAudio.current?.pause();
+      }).catch(() => {});
+    }
+    if (applauseAudio.current) {
+      applauseAudio.current.play().then(() => {
+        applauseAudio.current?.pause();
+      }).catch(() => {});
+    }
 
     setIsSpinning(true);
     setWinner(null);
@@ -59,25 +82,25 @@ export default function LuckyWheel({ students, currentClass }: LuckyWheelProps) 
     const startTime = performance.now();
     const duration = 4000;
     const sliceAngle = 360 / list.length;
-    lastIndex.current = -1;
+    lastSegment.current = -1;
 
     const checkRotation = (time: number) => {
       const elapsed = time - startTime;
       const progress = Math.min(elapsed / duration, 1);
       
-      // Approximating the cubic-bezier(0.1, 0, 0, 1) curve
-      // Ease out power 4: 1 - Math.pow(1 - progress, 4)
       const easeProgress = 1 - Math.pow(1 - progress, 4);
       const currentRotation = rotation + (totalRotation - rotation) * easeProgress;
       
-      const currentIndex = Math.floor(((currentRotation % 360)) / sliceAngle);
+      const adjustedAngle = (360 - (currentRotation % 360)) % 360;
+      const currentSegment = Math.floor(adjustedAngle / sliceAngle);
       
-      if (currentIndex !== lastIndex.current) {
+      if (currentSegment !== lastSegment.current) {
         if (tickAudio.current) {
           tickAudio.current.currentTime = 0;
           tickAudio.current.play().catch(() => {});
         }
-        lastIndex.current = currentIndex;
+        setPointerColor(colors[currentSegment % colors.length]);
+        lastSegment.current = currentSegment;
       }
 
       if (progress < 1) {
@@ -90,17 +113,20 @@ export default function LuckyWheel({ students, currentClass }: LuckyWheelProps) 
       setIsSpinning(false);
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
       
-      // Final calculation for winner
       const finalAngle = totalRotation % 360;
-      const adjustedAngle = (360 - (finalAngle % 360)) % 360;
-      const winnerIndex = Math.floor(adjustedAngle / sliceAngle);
+      const finalAdjustedAngle = (360 - (finalAngle % 360)) % 360;
+      const winnerIndex = Math.floor(finalAdjustedAngle / sliceAngle);
       const wonStudent = list[winnerIndex % list.length];
       setWinner(wonStudent);
 
-      // Play win sound
-      if (winAudio.current) {
-        winAudio.current.currentTime = 0;
-        winAudio.current.play().catch(() => {});
+      // Play victory sounds
+      if (fireworkAudio.current) {
+        fireworkAudio.current.currentTime = 0;
+        fireworkAudio.current.play().catch(() => {});
+      }
+      if (applauseAudio.current) {
+        applauseAudio.current.currentTime = 0;
+        applauseAudio.current.play().catch(() => {});
       }
 
       confetti({
@@ -120,17 +146,13 @@ export default function LuckyWheel({ students, currentClass }: LuckyWheelProps) 
     setList(students.filter(s => s.className === currentClass));
     setWinner(null);
     setRotation(0);
+    setPointerColor('#f43f5e');
   };
 
   const removeFromList = (id: string) => {
     setList(list.filter(s => s.id !== id));
     if (winner?.id === id) setWinner(null);
   };
-
-  const colors = [
-    '#6366f1', '#ec4899', '#10b981', '#f59e0b', 
-    '#8b5cf6', '#06b6d4', '#f43f5e', '#14b8a6'
-  ];
 
   const [bulkInput, setBulkInput] = useState('');
   const [showBulkInput, setShowBulkInput] = useState(false);
@@ -155,7 +177,11 @@ export default function LuckyWheel({ students, currentClass }: LuckyWheelProps) 
         <div className="relative w-full max-w-[400px] aspect-square">
           {/* Pointer */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 z-20">
-            <div className="w-6 h-8 bg-rose-500 clip-path-triangle shadow-lg border-2 border-white" style={{ clipPath: 'polygon(50% 100%, 0 0, 100% 0)' }}></div>
+            <motion.div 
+              animate={{ backgroundColor: pointerColor }}
+              className="w-6 h-8 shadow-lg border-2 border-white transition-colors duration-200" 
+              style={{ clipPath: 'polygon(50% 100%, 0 0, 100% 0)' }}
+            ></motion.div>
           </div>
 
           <svg

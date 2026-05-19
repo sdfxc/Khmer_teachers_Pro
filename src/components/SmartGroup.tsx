@@ -9,7 +9,7 @@ import { Users, Shuffle, Download, Printer } from 'lucide-react';
 import { motion } from 'motion/react';
 import confetti from 'canvas-confetti';
 
-const WIN_URL = 'https://assets.mixkit.co/active_storage/sfx/2010/2010-preview.mp3';
+const FIREWORK_URL = 'https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3';
 
 interface SmartGroupProps {
   students: Student[];
@@ -20,14 +20,22 @@ export default function SmartGroup({ students, currentClass }: SmartGroupProps) 
   const [groupCount, setGroupCount] = useState(4);
   const [groups, setGroups] = useState<Group[]>([]);
   const classStudents = students.filter(s => s.className === currentClass);
-  const winAudio = React.useRef<HTMLAudioElement | null>(null);
+  const fireworkAudio = React.useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    winAudio.current = new Audio(WIN_URL);
+    fireworkAudio.current = new Audio(FIREWORK_URL);
+    fireworkAudio.current.volume = 0.8;
   }, []);
 
-  const generateGroups = () => {
+  const generateGroups = async () => {
     if (classStudents.length < groupCount) return;
+
+    // Unlock audio
+    if (fireworkAudio.current) {
+      fireworkAudio.current.play().then(() => {
+        fireworkAudio.current?.pause();
+      }).catch(() => {});
+    }
 
     // Smart Balancing Logic
     // 1. Group by Level and then Gender
@@ -62,10 +70,10 @@ export default function SmartGroup({ students, currentClass }: SmartGroupProps) 
 
     setGroups(newGroups);
     
-    // Play win sound
-    if (winAudio.current) {
-      winAudio.current.currentTime = 0;
-      winAudio.current.play().catch(() => {});
+    // Play firework sound
+    if (fireworkAudio.current) {
+      fireworkAudio.current.currentTime = 0;
+      fireworkAudio.current.play().catch(() => {});
     }
 
     confetti({
