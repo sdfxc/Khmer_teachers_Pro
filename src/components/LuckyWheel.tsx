@@ -9,6 +9,9 @@ import { RefreshCw, Play, RotateCcw, Shuffle, Trash2, Plus } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react';
 import confetti from 'canvas-confetti';
 
+const TICK_URL = 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3';
+const WIN_URL = 'https://assets.mixkit.co/active_storage/sfx/2010/2010-preview.mp3';
+
 interface LuckyWheelProps {
   students: Student[];
   currentClass: StudentClassName;
@@ -20,6 +23,20 @@ export default function LuckyWheel({ students, currentClass }: LuckyWheelProps) 
   const [rotation, setRotation] = useState(0);
   const [winner, setWinner] = useState<Student | null>(null);
   const wheelRef = useRef<SVGSVGElement>(null);
+  const tickAudio = useRef<HTMLAudioElement | null>(null);
+  const winAudio = useRef<HTMLAudioElement | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const lastIndex = useRef<number>(-1);
+
+  useEffect(() => {
+    tickAudio.current = new Audio(TICK_URL);
+    winAudio.current = new Audio(WIN_URL);
+    tickAudio.current.volume = 0.5;
+    
+    return () => {
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     setList(students.filter(s => s.className === currentClass));
@@ -38,17 +55,53 @@ export default function LuckyWheel({ students, currentClass }: LuckyWheelProps) 
     
     setRotation(totalRotation);
 
+    // Track rotation for sound effects
+    const startTime = performance.now();
+    const duration = 4000;
+    const sliceAngle = 360 / list.length;
+    lastIndex.current = -1;
+
+    const checkRotation = (time: number) => {
+      const elapsed = time - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      // Approximating the cubic-bezier(0.1, 0, 0, 1) curve
+      // Ease out power 4: 1 - Math.pow(1 - progress, 4)
+      const easeProgress = 1 - Math.pow(1 - progress, 4);
+      const currentRotation = rotation + (totalRotation - rotation) * easeProgress;
+      
+      const currentIndex = Math.floor(((currentRotation % 360)) / sliceAngle);
+      
+      if (currentIndex !== lastIndex.current) {
+        if (tickAudio.current) {
+          tickAudio.current.currentTime = 0;
+          tickAudio.current.play().catch(() => {});
+        }
+        lastIndex.current = currentIndex;
+      }
+
+      if (progress < 1) {
+        animationFrameRef.current = requestAnimationFrame(checkRotation);
+      }
+    };
+    animationFrameRef.current = requestAnimationFrame(checkRotation);
+
     setTimeout(() => {
       setIsSpinning(false);
-      // Calculate winner based on final angle
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      
+      // Final calculation for winner
       const finalAngle = totalRotation % 360;
-      const sliceAngle = 360 / list.length;
-      // We want the slice at the TOP (270 deg usually for pointer at top)
-      // Pointer is at 0 degrees (pointing right) by default in SVG standard rotation
-      // Let's adjust so 0 is top
       const adjustedAngle = (360 - (finalAngle % 360)) % 360;
       const winnerIndex = Math.floor(adjustedAngle / sliceAngle);
-      setWinner(list[winnerIndex]);
+      const wonStudent = list[winnerIndex % list.length];
+      setWinner(wonStudent);
+
+      // Play win sound
+      if (winAudio.current) {
+        winAudio.current.currentTime = 0;
+        winAudio.current.play().catch(() => {});
+      }
 
       confetti({
         particleCount: 150,

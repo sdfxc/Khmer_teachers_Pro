@@ -9,6 +9,8 @@ import { Users, Shuffle, Download, Printer } from 'lucide-react';
 import { motion } from 'motion/react';
 import confetti from 'canvas-confetti';
 
+const WIN_URL = 'https://assets.mixkit.co/active_storage/sfx/2010/2010-preview.mp3';
+
 interface SmartGroupProps {
   students: Student[];
   currentClass: StudentClassName;
@@ -18,6 +20,11 @@ export default function SmartGroup({ students, currentClass }: SmartGroupProps) 
   const [groupCount, setGroupCount] = useState(4);
   const [groups, setGroups] = useState<Group[]>([]);
   const classStudents = students.filter(s => s.className === currentClass);
+  const winAudio = React.useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    winAudio.current = new Audio(WIN_URL);
+  }, []);
 
   const generateGroups = () => {
     if (classStudents.length < groupCount) return;
@@ -54,6 +61,13 @@ export default function SmartGroup({ students, currentClass }: SmartGroupProps) 
     });
 
     setGroups(newGroups);
+    
+    // Play win sound
+    if (winAudio.current) {
+      winAudio.current.currentTime = 0;
+      winAudio.current.play().catch(() => {});
+    }
+
     confetti({
       particleCount: 100,
       spread: 60,
